@@ -3,6 +3,7 @@
 //  SearchTextField
 //
 //  Created by Alejandro Pasccon on 4/20/16.
+//  Edited by Cole Smith on 8/7/18
 //  Copyright © 2016 Alejandro Pasccon. All rights reserved.
 //
 
@@ -24,7 +25,7 @@ open class SearchTextField: UITextField {
     
     /// Indicate if keyboard is showing or not
     open var keyboardIsShowing = false
-
+    
     /// How long to wait before deciding typing has stopped
     open var typingStoppedDelay = 0.8
     
@@ -40,7 +41,7 @@ open class SearchTextField: UITextField {
                 
                 self.placeholderLabel?.textColor = placeholderColor
             }
-           
+            
             if let hightlightedFont = self.highlightAttributes[.font] as? UIFont {
                 self.highlightAttributes[.font] = hightlightedFont.withSize(self.theme.font.pointSize)
             }
@@ -114,7 +115,7 @@ open class SearchTextField: UITextField {
     
     /// Min number of characters to start filtering
     open var minCharactersNumberToStartFiltering: Int = 0
-
+    
     /// Force no filtering (display the entire filtered data source)
     open var forceNoFiltering: Bool = false
     
@@ -126,7 +127,7 @@ open class SearchTextField: UITextField {
     
     /// Set the results list's header
     open var resultsListHeader: UIView?
-
+    
     // Move the table around to customize for your layout
     open var tableXOffset: CGFloat = 0.0
     open var tableYOffset: CGFloat = 0.0
@@ -146,6 +147,10 @@ open class SearchTextField: UITextField {
     fileprivate static let cellIdentifier = "APSearchTextFieldCell"
     fileprivate let indicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
     fileprivate var maxTableViewSize: CGFloat = 0
+    
+    fileprivate var lastText: String? {
+        return text?.components(separatedBy: ", ").last!
+    }
     
     fileprivate var filteredResults = [SearchTextFieldItem]()
     fileprivate var filterDataSource = [SearchTextFieldItem]() {
@@ -373,7 +378,7 @@ open class SearchTextField: UITextField {
         timer?.invalidate()
         timer = Timer.scheduledTimer(timeInterval: typingStoppedDelay, target: self, selector: #selector(SearchTextField.typingDidStop), userInfo: self, repeats: false)
         
-        if text!.isEmpty {
+        if lastText!.isEmpty {
             clearResults()
             tableView?.reloadData()
             if startVisible || startVisibleWithoutInteraction {
@@ -389,7 +394,7 @@ open class SearchTextField: UITextField {
     }
     
     @objc open func textFieldDidBeginEditing() {
-        if (startVisible || startVisibleWithoutInteraction) && text!.isEmpty {
+        if (startVisible || startVisibleWithoutInteraction) && lastText!.isEmpty {
             clearResults()
             filter(forceShowAll: true)
         }
@@ -409,7 +414,7 @@ open class SearchTextField: UITextField {
             }
             else {
                 if inlineMode, let filterAfter = startFilteringAfter {
-                    let stringElements = self.text?.components(separatedBy: filterAfter)
+                    let stringElements = self.lastText?.components(separatedBy: filterAfter)
                     
                     self.text = stringElements!.first! + filterAfter + firstElement.title
                 } else {
@@ -432,7 +437,7 @@ open class SearchTextField: UITextField {
     fileprivate func filter(forceShowAll addAll: Bool) {
         clearResults()
         
-        if text!.count < minCharactersNumberToStartFiltering {
+        if lastText!.count < minCharactersNumberToStartFiltering {
             return
         }
         
@@ -442,8 +447,8 @@ open class SearchTextField: UITextField {
             
             if !inlineMode {
                 // Find text in title and subtitle
-                let titleFilterRange = (item.title as NSString).range(of: text!, options: comparisonOptions)
-                let subtitleFilterRange = item.subtitle != nil ? (item.subtitle! as NSString).range(of: text!, options: comparisonOptions) : NSMakeRange(NSNotFound, 0)
+                let titleFilterRange = (item.title as NSString).range(of: lastText!, options: comparisonOptions)
+                let subtitleFilterRange = item.subtitle != nil ? (item.subtitle! as NSString).range(of: lastText!, options: comparisonOptions) : NSMakeRange(NSNotFound, 0)
                 
                 if titleFilterRange.location != NSNotFound || subtitleFilterRange.location != NSNotFound || addAll {
                     item.attributedTitle = NSMutableAttributedString(string: item.title)
@@ -594,12 +599,15 @@ extension SearchTextField: UITableViewDelegate, UITableViewDataSource {
     
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         if itemSelectionHandler == nil {
-            self.text = filteredResults[(indexPath as NSIndexPath).row].title
+            var fandoms = self.text!.components(separatedBy: ", ")
+            if fandoms.count > 0 {
+                fandoms[fandoms.count - 1] = filteredResults[(indexPath as NSIndexPath).row].title
+                self.text = "\(fandoms.joined(separator: ", ")), "
+            }
         } else {
             let index = indexPath.row
             itemSelectionHandler!(filteredResults, index)
         }
-        
         clearResults()
     }
 }
@@ -675,3 +683,4 @@ enum Direction {
     case down
     case up
 }
+
